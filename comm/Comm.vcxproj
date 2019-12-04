@@ -23,6 +23,7 @@
     <ClInclude Include="app\TCPClient.h" />
     <ClInclude Include="app\TCPClientListener.h" />
     <ClInclude Include="app\TCPServer.h" />
+    <ClInclude Include="app\TCPServerListener.h" />
     <ClInclude Include="app\UDPClient.h" />
     <ClInclude Include="app\UDPClientListener.h" />
     <ClInclude Include="app\Const.h" />
