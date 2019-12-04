@@ -7,7 +7,7 @@ namespace app {
 		: m_mutex()
 		, m_sckMtx()
 		, m_context(ctx)
-		, m_socket()
+		, m_acceptor()
 		, m_port(0)
 		, m_listeners()
 		, m_buffer()
@@ -27,7 +27,7 @@ namespace app {
 		std::unique_lock<std::shared_mutex> lock(server.m_mutex);
 		std::unique_lock<std::recursive_mutex> lk(server.m_sckMtx);
 		m_context = std::move(server.m_context);
-		m_socket = std::move(server.m_socket);
+		m_acceptor = std::move(server.m_acceptor);
 		m_port = std::move(server.m_port);
 		m_listeners = std::move(server.m_listeners);
 		m_buffer = std::move(server.m_buffer);
@@ -43,7 +43,7 @@ namespace app {
 			std::unique_lock<std::recursive_mutex> lk4(server.m_sckMtx, std::defer_lock);
 			std::lock(lk1, lk2, lk3, lk4);
 			m_context = std::move(server.m_context);
-			m_socket = std::move(server.m_socket);
+			m_acceptor = std::move(server.m_acceptor);
 			m_port = std::move(server.m_port);
 			m_listeners = std::move(server.m_listeners);
 			m_buffer = std::move(server.m_buffer);
@@ -56,9 +56,9 @@ namespace app {
 	bool TCPServer::create(uint16_t port)
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		if (m_socket.get() != nullptr) return false;
+		if (m_acceptor.get() != nullptr) return false;
 		m_port = port;
-		m_socket = std::make_unique<tcp::socket>(m_context->getContext(), tcp::endpoint(tcp::v4(), port));
+		m_acceptor = std::make_unique<tcp::acceptor>(m_context->getContext(), tcp::endpoint(tcp::v4(), port));
 
 		return true;
 	}
@@ -66,6 +66,7 @@ namespace app {
 	bool TCPServer::bind()
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
+		/*
 		if (m_socket.get() == nullptr) return false;
 		if (m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
 
@@ -82,12 +83,14 @@ namespace app {
 		}
 
 		m_isBinding.store(true, std::memory_order::memory_order_seq_cst);
+		*/
 		return true;
 	}
 
 	bool TCPServer::unBind()
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
+		/*
 		if (m_socket.get() == nullptr) return false;
 		if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
 
@@ -98,7 +101,7 @@ namespace app {
 		for (auto& listener : m_listeners) {
 			if (listener != nullptr) listener->onTCPServerUnBinded();
 		}
-
+		*/
 		return true;
 	}
 
@@ -107,7 +110,7 @@ namespace app {
 		unBind();
 		{
 			std::unique_lock<std::recursive_mutex> lock(m_sckMtx);
-			m_socket.reset(nullptr);
+			m_acceptor.reset(nullptr);
 		}
 
 		return true;
@@ -115,6 +118,7 @@ namespace app {
 
 	bool TCPServer::startReceiveAsync()
 	{
+		/*
 		std::unique_lock<std::recursive_mutex> lock(m_sckMtx);
 		if (m_socket.get() != nullptr) {
 			m_socket->async_receive(boost::asio::buffer(m_buffer),
@@ -127,6 +131,7 @@ namespace app {
 				}
 			});
 		}
+		*/
 		return true;
 	}
 }

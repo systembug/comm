@@ -38,6 +38,7 @@ namespace app {
 		template <class Data>
 		bool send(Data&& data) {
 			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			/*
 			if (m_socket.get() == nullptr) return false;
 			if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
 			try {
@@ -47,13 +48,14 @@ namespace app {
 				e.code();
 				return false;
 			}
-
+			*/
 			return true;
 		}
 
 		template <class Data>
 		bool sendAsync(Data&& data) {
 			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			/*
 			if (m_socket.get() == nullptr) return false;
 			if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
 			m_socket->async_send(boost::asio::buffer(std::forward<Data>(data)),
@@ -62,18 +64,7 @@ namespace app {
 					if (listener != nullptr) listener->onReceivedSent(e);
 				}
 			});
-			return true;
-		}
-
-		template <class Data>
-		inline bool sendToBroadCast(uint16_t port, Data&& data) {
-			std::shared_lock<std::shared_mutex> lock(m_mutex);
-			auto socket = udp::socket(m_context->getContext());
-			socket.open(udp::v4());
-			socket.set_option(boost::asio::socket_base::broadcast(true));
-			socket.send_to(boost::asio::buffer(std::forward<Data>(data)),
-				udp::endpoint(boost::asio::ip::address_v4::broadcast(), port));
-
+			*/
 			return true;
 		}
 
@@ -87,7 +78,7 @@ namespace app {
 		mutable std::shared_mutex m_mutex;
 		mutable std::recursive_mutex m_sckMtx;
 		cys::comm::Context* m_context;
-		std::unique_ptr<tcp::socket> m_socket;
+		std::unique_ptr<tcp::acceptor> m_acceptor;
 
 	private:
 		uint16_t m_port;
