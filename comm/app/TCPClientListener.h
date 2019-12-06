@@ -1,4 +1,5 @@
 #pragma once
+#include <boost/system/error_code.hpp>
 
 namespace cys {
 namespace comm {
@@ -9,6 +10,7 @@ namespace app {
 		virtual void onTCPClientDisconnected(const boost::system::error_code& e) = 0;
 		virtual void onTCPClientSent(const boost::system::error_code& e) = 0;
 		virtual void onTCPClientReceived(const boost::system::error_code& e, const std::array<uint8_t, MAX_BUFFER_NUM>& data) = 0;
+		virtual void onTCPClientError(const boost::system::error_code& e) = 0;
 	};
 }
 }

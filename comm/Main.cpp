@@ -1,36 +1,25 @@
 ﻿#include <iostream>
-#include "comm/app/TCPClient.h"
+#include "comm/app/UDPClient.h"
 #include "comm/Context.h"
 
 int main()
 {
 	cys::comm::Context ctx;
-	cys::comm::app::TCPClient client(&ctx);
+	cys::comm::app::UDPClient client(&ctx);
 	// client.create();
 	client.create(44444);
-	client.connect("127.0.0.1", 56671);
-
-	std::string test(10, 'a');
-
-	client.sendAsync(test);
-
-	// std::array<uint8_t, 100> data;
-	// client.receive(data);
-	client.receiveAsync();
-	// client.receiveFrom(data);
-	// auto ep = client.receiveFrom(18282, data);
-	// client.disconnect(channel);
-
+	client.connect("127.0.0.1", 63910);
 	ctx.run();
-	
+
+	for (auto i = 0; i < 100; ++i) {
+		client.send(std::to_string(i));
+	}	   
+
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	
 	client.disconnect();
 	client.destroy();
 	
 	ctx.release();
-
-
-    std::cout << "Hello World!\n"; 
-
+	return 0;
 }

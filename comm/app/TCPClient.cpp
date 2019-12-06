@@ -67,7 +67,15 @@ namespace app {
 		if (m_socket.get() == nullptr) return false;
 		if (m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
 		if (port <= 0) return false;
-		m_socket->connect(tcp::endpoint(boost::asio::ip::address::from_string(address), port));
+		try {
+			m_socket->connect(tcp::endpoint(boost::asio::ip::address::from_string(address), port));
+		}
+		catch (boost::system::system_error& e) {
+			for (auto& listener : m_listeners) {
+				if (listener != nullptr) listener->onTCPClientError(e.code());
+			}
+			return false;
+		}
 		m_isConnecting.store(true, std::memory_order::memory_order_seq_cst);
 
 		for (auto& listener : m_listeners) {
