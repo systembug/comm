@@ -2,6 +2,7 @@
 #include <boost/asio.hpp>
 #include <shared_mutex>
 #include <memory>
+#include <type_traits>
 #include "Const.h"
 #include "comm/Context.h"
 #include "UDPClientListener.h"
@@ -46,7 +47,8 @@ namespace app {
 			return connectAsync(address.c_str(), port);
 		}
 
-		template <class Data>
+		template <class Data, typename std::enable_if<!std::is_base_of_v<std::streambuf,
+			std::decay_t<Data>>>::type* = nullptr>
 		bool send(Data&& data) {
 			std::shared_lock<std::shared_mutex> lock(m_mutex);
 			if (m_socket.get() == nullptr) return false;
@@ -61,6 +63,26 @@ namespace app {
 				return false;
 			}
 
+			return true;
+		}
+
+		template <class StreamBuf, typename std::enable_if<std::is_base_of_v<std::streambuf, 
+			std::decay_t<StreamBuf>>>::type* = nullptr>
+		bool send(StreamBuf&& buf) {
+			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			if (m_socket.get() == nullptr) return false;
+			if (!m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
+			try {
+				auto n = m_socket->send(buf.data());
+				buf.consume(n);
+			}
+			catch (boost::system::system_error& e) {
+				for (auto& listener : m_listeners) {
+					if (listener != nullptr) listener->onUDPClientError(e.code());
+				}
+				return false;
+			}
+			
 			return true;
 		}
 
@@ -116,7 +138,8 @@ namespace app {
 			return true;
 		}
 
-		template <class Data>
+		template <class Data, typename std::enable_if<!std::is_base_of_v<std::streambuf, 
+			std::decay_t<Data>>>::type* = nullptr>
 		bool receive(Data&& data) {
 			std::shared_lock<std::shared_mutex> lock(m_mutex);
 			if (m_socket.get() == nullptr) return false;
@@ -126,12 +149,37 @@ namespace app {
 			return true;
 		}
 
-		template <class Data>
+		template <class StreamBuf, typename std::enable_if<std::is_base_of_v<std::streambuf,
+			std::decay_t<StreamBuf>>>::type* = nullptr>
+			bool receive(StreamBuf&& buf) {
+			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			if (m_socket.get() == nullptr) return false;
+			if (!m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
+
+			auto size = m_socket->receive(buf);
+			buf.commit(size);
+			return true;
+		}
+
+		template <class Data, typename std::enable_if<!std::is_base_of_v<std::streambuf,
+			std::decay_t<Data>>>::type* = nullptr>
 		udp::endpoint receiveFrom(uint16_t port, Data&& data) {
 			std::shared_lock<std::shared_mutex> lock(m_mutex);
 			auto socket = udp::socket(m_context->getContext(), udp::endpoint(udp::v4(), port));
 			udp::endpoint ep;
 			socket.receive_from(boost::asio::buffer(data), ep);
+			return ep;
+		}
+
+		template <class StreamBuf, typename std::enable_if<std::is_base_of_v<std::streambuf,
+			std::decay_t<StreamBuf>>>::type* = nullptr>
+		udp::endpoint receiveFrom(uint16_t port, StreamBuf&& streamBuf) {
+			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			auto socket = udp::socket(m_context->getContext(), udp::endpoint(udp::v4(), port));
+			udp::endpoint ep;
+			auto buf = streamBuf.prepare(MAX_BUFFER_NUM);
+			auto size = socket.receive_from(buf, ep);
+			streamBuf.commit(size);
 			return ep;
 		}
 

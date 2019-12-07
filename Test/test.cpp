@@ -166,6 +166,34 @@ TEST(UDP, SendTest) {
 	ctx.release();
 }
 
+TEST(UDP, SendTestWithStreamBuf) {
+	cys::comm::Context ctx;
+	cys::comm::app::UDPServer server(&ctx);
+	cys::comm::app::UDPClient client(&ctx);
+
+	UDPServerListenerMock mock;
+
+	server.create(18282);
+	server.addListener(&mock);
+	EXPECT_CALL(mock, onUDPServerBinded());
+	server.bind();
+	client.create(28282);
+	client.connect("127.0.0.1", 18282);
+	ctx.run();
+	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
+	boost::asio::streambuf buf;
+	std::ostream os(&buf);
+	os << "TEST";
+	EXPECT_CALL(mock, onUDPServerReceived(::testing::_, arr));
+	EXPECT_CALL(mock, onUDPServerUnBinded());
+	EXPECT_EQ(client.send(buf), true);
+
+	client.disconnect();
+	client.destroy();
+	server.destroy();
+	ctx.release();
+}
+
 TEST(UDP, SendAsyncTest) {
 	cys::comm::Context ctx;
 	cys::comm::app::UDPServer server(&ctx);
@@ -295,6 +323,40 @@ TEST(UDP, ReceiveFromTest) {
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
 	server.sendTo("127.0.0.1", 28282, arr);	
 	
+	EXPECT_EQ((arr == recv), true);
+	re.get();
+	client.destroy();
+	server.destroy();
+	ctx.release();
+}
+
+TEST(UDP, ReceiveFromTestWithStreamBuf) {
+	cys::comm::Context ctx;
+	cys::comm::app::UDPServer server(&ctx);
+	cys::comm::app::UDPClient client(&ctx);
+
+	UDPClientListenerMock cMock;
+
+	server.create(18282);
+	server.bind();
+	client.create();
+	client.addListener(&cMock);
+	ctx.run();
+
+	boost::asio::streambuf buf;
+	std::istream is(&buf);
+	auto re = std::async(std::launch::async, [&client, &buf]() {
+		client.receiveFrom(28282, buf);
+	});
+
+	// Maybe stay some times...
+	std::this_thread::sleep_for(std::chrono::seconds(2));
+
+	std::string arr("TEST");
+	server.sendTo("127.0.0.1", 28282, arr);
+	std::string recv;	
+	is >> recv;
+
 	EXPECT_EQ((arr == recv), true);
 	re.get();
 	client.destroy();
