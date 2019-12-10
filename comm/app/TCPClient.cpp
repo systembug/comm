@@ -57,7 +57,14 @@ namespace app {
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
 
 		m_port = port;
-		m_socket = std::make_unique<tcp::socket>(m_context->getContext(), tcp::endpoint(tcp::v4(), m_port));
+		try {
+			m_socket = std::make_unique<tcp::socket>(m_context->getContext(), tcp::endpoint(tcp::v4(), m_port));
+		}
+		catch (boost::system::system_error& e) {
+			for (auto& listener : m_listeners) {
+				if (listener != nullptr) listener->onTCPClientError(e.code());
+			}
+		}
 		return true;
 	}
 

@@ -59,7 +59,14 @@ namespace app {
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
 
 		m_port = port;
-		m_socket = std::make_unique<udp::socket>(m_context->getContext(), udp::endpoint(udp::v4(), m_port));
+		try {
+			m_socket = std::make_unique<udp::socket>(m_context->getContext(), udp::endpoint(udp::v4(), m_port));
+		}
+		catch (boost::system::system_error& e) {
+			for (auto& listener : m_listeners) {
+				if (listener != nullptr) listener->onUDPClientError(e.code());
+			}
+		}
 		return true;
 	}
 
