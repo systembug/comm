@@ -64,6 +64,7 @@ namespace app {
 			for (auto& listener : m_listeners) {
 				if (listener != nullptr) listener->onTCPClientError(e.code());
 			}
+			return false;
 		}
 		return true;
 	}

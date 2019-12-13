@@ -34,6 +34,7 @@
     <ClInclude Include="transport\TCP.hpp" />
     <ClInclude Include="transport\transport.hpp" />
     <ClInclude Include="transport\UDP.hpp" />
+    <ClInclude Include="ViewerData.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app\TCPClient.cpp" />
@@ -145,7 +146,7 @@
       <AdditionalLibraryDirectories>D:\boost\boost_1_71_0\lib64-msvc-14.1;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)Test"</Command>
+      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)Test\$(ConfigurationName)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -188,7 +189,7 @@
       <AdditionalLibraryDirectories>D:\boost\boost_1_71_0\lib64-msvc-14.1;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)Test"</Command>
+      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)Test\$(ConfigurationName)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

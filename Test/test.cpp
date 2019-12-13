@@ -42,7 +42,7 @@ TEST(UDP, SamePortExceptionTest) {
 	cys::comm::app::UDPServer server(&ctx);
 	cys::comm::app::UDPClient client(&ctx);
 	server.create(18282);	
-	EXPECT_ANY_THROW(client.create(18282));
+	EXPECT_EQ(client.create(18282), false);
 	server.destroy();
 	client.destroy();
 }

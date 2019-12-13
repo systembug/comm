@@ -66,6 +66,7 @@ namespace app {
 			for (auto& listener : m_listeners) {
 				if (listener != nullptr) listener->onUDPClientError(e.code());
 			}
+			return false;
 		}
 		return true;
 	}
