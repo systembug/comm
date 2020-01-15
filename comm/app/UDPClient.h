@@ -103,6 +103,12 @@ namespace app {
 		template <class Data>
 		inline bool sendToBroadCast(uint16_t port, Data&& data) {
 			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			if (m_isConnecting.load()) {
+				for (auto& listener : m_listeners) {
+					if (listener != nullptr) listener->onUDPClientError(boost::system::error_code());
+				}
+				return false;
+			}
 			auto socket = udp::socket(m_context->getContext());
 			socket.open(udp::v4());
 			socket.set_option(boost::asio::socket_base::broadcast(true));

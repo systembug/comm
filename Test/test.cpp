@@ -299,6 +299,30 @@ TEST(UDP, SendBroadCastTest) {
 	ctx.release();
 }
 
+TEST(UDP, SendBroadFailTest) {
+	cys::comm::Context ctx;
+	cys::comm::app::UDPServer server(&ctx);
+	cys::comm::app::UDPClient client(&ctx);
+
+	UDPServerListenerMock mock;
+
+	server.create(18282);
+	server.addListener(&mock);
+	EXPECT_CALL(mock, onUDPServerBinded());
+	server.bind();
+	client.create(28282);
+	client.connect("127.0.0.1", 18282);
+	ctx.run();
+	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
+	EXPECT_CALL(mock, onUDPServerUnBinded());
+	EXPECT_EQ(client.sendToBroadCast(18282, arr), false);
+
+	client.destroy();
+	server.destroy();
+	ctx.release();
+}
+
+
 TEST(UDP, ReceiveFromTest) {
 	cys::comm::Context ctx;
 	cys::comm::app::UDPServer server(&ctx);
