@@ -363,7 +363,7 @@ TEST(UDP, ReceiveFromTestWithStreamBuf) {
 
 	server.create(18282);
 	server.bind();
-	client.create();
+	client.create(); 
 	client.addListener(&cMock);
 	ctx.run();
 

@@ -60,9 +60,9 @@ namespace app {
 			if (m_socket.get() == nullptr) return false;
 			if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
 			m_socket->async_send(boost::asio::buffer(std::forward<Data>(data)),
-				[](const boost::system::error_code& e, std::size_t transferred) {
+				[this](const boost::system::error_code& e, std::size_t transferred) {
 				for (auto& listener : m_listeners) {
-					if (listener != nullptr) listener->onReceivedSent(e);
+					if (listener != nullptr) listener->onUDPServerSent(e);
 				}
 			});
 			return true;
@@ -98,9 +98,9 @@ namespace app {
 			socket.open(udp::v4());
 			socket.async_send_to(boost::asio::buffer(std::forward<Data>(data)),
 				udp::endpoint(boost::asio::ip::address::from_string(std::forward<Address>(address)), port),
-				[](const boost::system::error_code& e, std::size_t transferred) {
+				[this](const boost::system::error_code& e, std::size_t transferred) {
 				for (auto& listener : m_listeners) {
-					if (listener != nullptr) listener->onReceivedSentTo(e);
+					if (listener != nullptr) listener->onUDPServerSentTo(e);
 				}
 			});
 			return true;
