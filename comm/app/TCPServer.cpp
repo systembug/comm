@@ -1,4 +1,5 @@
 #include "TCPServer.h"
+#include "TCPSession.hpp"
 
 namespace cys {
 namespace comm {
@@ -66,34 +67,22 @@ namespace app {
 	bool TCPServer::bind()
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		/*
-		if (m_socket.get() == nullptr) return false;
+		if (m_acceptor.get() == nullptr) return false;
 		if (m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
 
-		if (startReceiveAsync()) {
-			for (auto& listener : m_listeners) {
-				if (listener != nullptr) listener->onTCPServerBinded();
-			}
-		}
-		else {
-			for (auto& listener : m_listeners) {
-				if (listener != nullptr) listener->onTCPServerUnBinded();
-			}
-			return false;
-		}
+		startAcceptAsync();
 
 		m_isBinding.store(true, std::memory_order::memory_order_seq_cst);
-		*/
-		return true;
+		return false;
 	}
 
 	bool TCPServer::unBind()
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		/*
-		if (m_socket.get() == nullptr) return false;
-		if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
 
+		if (m_acceptor == nullptr) return false;
+		if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
+		/*
 		boost::system::error_code ec;
 		m_socket->shutdown(tcp::socket::shutdown_both, ec);
 		m_socket->close();
@@ -102,7 +91,7 @@ namespace app {
 			if (listener != nullptr) listener->onTCPServerUnBinded();
 		}
 		*/
-		return true;
+		return false;
 	}
 
 	bool TCPServer::destroy()
@@ -116,8 +105,32 @@ namespace app {
 		return true;
 	}
 
+	void TCPServer::startAcceptAsync()
+	{
+		std::unique_lock<std::recursive_mutex> lock(m_conMtx);
+		if (m_acceptor != nullptr) {
+			auto session = std::make_unique<TCPSession>(m_context);
+			session->create();
+			m_acceptor->async_accept(session->getSocket(), [this, &session](const boost::system::error_code& err) {
+				if (!err) {
+					for (auto& listener : m_listeners) {
+						if (listener != nullptr) listener->onTCPServerBinded();
+					}
+
+					session->start();
+				}
+				else {
+					session->destroy();
+				}
+			});
+
+			startAcceptAsync();
+		}
+	}
+
 	bool TCPServer::startReceiveAsync()
 	{
+		std::unique_lock<std::recursive_mutex> lock(m_conMtx);
 		/*
 		std::unique_lock<std::recursive_mutex> lock(m_sckMtx);
 		if (m_socket.get() != nullptr) {

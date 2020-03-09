@@ -72,10 +72,12 @@ namespace app {
 		bool destroy();
 
 	private:
+		void startAcceptAsync();
 		bool startReceiveAsync();
 
 	private:
 		mutable std::shared_mutex m_mutex;
+		mutable std::recursive_mutex m_conMtx;
 		mutable std::recursive_mutex m_sckMtx;
 		cys::comm::Context* m_context;
 		std::unique_ptr<tcp::acceptor> m_acceptor;
