@@ -6,6 +6,7 @@
 #include <boost/iostreams/device/back_inserter.hpp>
 #include "comm/app/UDPServer.h"
 #include "comm/app/UDPServerListener.h"
+#include "comm/app/TCPClient.h"
 #include "comm/Context.h"
 #include "ViewerData.h"
 
@@ -62,6 +63,7 @@ public:
 
 int main()
 {
+	/*
 	cys::comm::Context ctx;
 	cys::comm::app::UDPServer server(&ctx);
 	// client.create();
@@ -77,6 +79,20 @@ int main()
 	server.unBind();
 	server.destroy();
 	
+	ctx.release();
+	return 0;
+	*/
+
+	cys::comm::Context ctx;
+	cys::comm::app::TCPClient client(&ctx);
+	client.create();
+	ctx.run();
+
+	client.connect("127.0.0.1", 53000);
+	client.disconnect();
+	client.connect("127.0.0.1", 53000);
+	client.disconnect();
+
 	ctx.release();
 	return 0;
 }

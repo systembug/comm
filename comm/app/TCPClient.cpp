@@ -1,4 +1,5 @@
 #include "TCPClient.h"
+#include <iostream>
 
 namespace cys {
 namespace comm {
@@ -7,7 +8,6 @@ namespace app {
 		: m_mutex()
 		, m_sckMtx()
 		, m_context(ctx)
-		, m_port(0)
 		, m_listeners()
 		, m_socket(nullptr)
 		, m_buffer()
@@ -26,7 +26,6 @@ namespace app {
 		std::unique_lock<std::shared_mutex> lock(client.m_mutex);
 		std::unique_lock<std::recursive_mutex> lk(client.m_sckMtx);
 		m_context = std::move(client.m_context);
-		m_port = std::move(client.m_port);
 		m_listeners = std::move(client.m_listeners);
 		m_socket = std::move(client.m_socket);
 		m_buffer = std::move(client.m_buffer);
@@ -42,7 +41,6 @@ namespace app {
 			std::unique_lock<std::recursive_mutex> lk4(m_sckMtx, std::defer_lock);
 			std::lock(lk1, lk2, lk3, lk4);
 			m_context = std::move(client.m_context);
-			m_port = std::move(client.m_port);
 			m_listeners = std::move(client.m_listeners);
 			m_socket = std::move(client.m_socket);
 			m_buffer = std::move(client.m_buffer);
@@ -52,38 +50,48 @@ namespace app {
 		return *this;
 	}
 
+	bool TCPClient::create()
+	{
+		std::unique_lock<std::shared_mutex> lock(m_mutex);
+		return true;
+	}
+
 	bool TCPClient::create(uint16_t port)
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-
-		m_port = port;
-		try {
-			m_socket = std::make_unique<tcp::socket>(m_context->getContext(), tcp::endpoint(tcp::v4(), m_port));
-		}
-		catch (boost::system::system_error& e) {
-			for (auto& listener : m_listeners) {
-				if (listener != nullptr) listener->onTCPClientError(e.code());
-			}
-			return false;
-		}
 		return true;
 	}
 
 	bool TCPClient::connect(const char* address, uint16_t port)
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		if (m_socket.get() == nullptr) return false;
+		if (m_socket.get() != nullptr) return false;
 		if (m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
 		if (port <= 0) return false;
+
 		try {
-			m_socket->connect(tcp::endpoint(boost::asio::ip::address::from_string(address), port));
+			m_socket = std::make_unique<tcp::socket>(m_context->getContext());
 		}
 		catch (boost::system::system_error& e) {
+			std::cout << "Socket Create Error: " << e.what() << std::endl;
 			for (auto& listener : m_listeners) {
 				if (listener != nullptr) listener->onTCPClientError(e.code());
 			}
 			return false;
 		}
+
+		try {
+			m_socket->connect(tcp::endpoint(boost::asio::ip::address::from_string(address), port));
+		}
+		catch (boost::system::system_error& e) {
+			std::cout << e.what() << std::endl;
+			resetSocket();
+			for (auto& listener : m_listeners) {
+				if (listener != nullptr) listener->onTCPClientError(e.code());
+			}
+			return false;
+		}
+		// std::cout << m_socket->local_endpoint() << std::endl;
 		m_isConnecting.store(true, std::memory_order::memory_order_seq_cst);
 
 		for (auto& listener : m_listeners) {
@@ -135,9 +143,7 @@ namespace app {
 
 		m_isConnecting.store(false, std::memory_order::memory_order_seq_cst);
 
-		boost::system::error_code ec;
-		m_socket->shutdown(tcp::socket::shutdown_both, ec);
-		if (m_socket->is_open()) m_socket->close();
+		resetSocket();
 
 		for (auto& listener : m_listeners) {
 			if (listener != nullptr) listener->onTCPClientDisconnected(boost::system::error_code());
@@ -149,10 +155,6 @@ namespace app {
 	bool TCPClient::destroy()
 	{
 		disconnect();
-		{
-			std::unique_lock<std::recursive_mutex> lock(m_sckMtx);
-			m_socket.reset(nullptr);
-		}
 		return true;
 	}
 
@@ -170,6 +172,15 @@ namespace app {
 				}
 			});
 		}
+	}
+
+	void TCPClient::resetSocket() {
+		boost::system::error_code ec;
+		m_socket->cancel(ec);
+		m_socket->shutdown(tcp::socket::shutdown_both, ec);
+		// std::cout << ec.message() << std::endl;
+		m_socket->close();
+		m_socket.reset(nullptr);
 	}
 }
 }

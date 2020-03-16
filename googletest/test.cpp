@@ -402,19 +402,45 @@ TEST(TCP, CreateValidTest) {
 	cys::comm::app::TCPServer server(&ctx);
 	cys::comm::app::TCPClient client(&ctx);
 	EXPECT_EQ(server.create(18282), true);
-	EXPECT_EQ(client.create(28282), true);
+	EXPECT_EQ(client.create(), true);
 	EXPECT_EQ(server.destroy(), true);
 	EXPECT_EQ(client.destroy(), true);
 }
 
-TEST(TCP, SamePortExceptionTest) {
+TEST(TCP, BindTest) {
 	cys::comm::Context ctx;
 	cys::comm::app::TCPServer server(&ctx);
-	cys::comm::app::TCPClient client(&ctx);
-	server.create(18282);
-	EXPECT_EQ(client.create(18282), false);
-	server.destroy();
-	client.destroy();
+
+	EXPECT_EQ(server.create(18282), true);
+	EXPECT_EQ(server.bind(), true);
+	ctx.run();
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	EXPECT_EQ(server.unBind(), true);
+	EXPECT_EQ(server.destroy(), true);
+	ctx.release();
+}
+
+TEST(TCP, MultiBindTest) {
+	cys::comm::Context ctx;
+	cys::comm::app::TCPServer server(&ctx);
+
+	EXPECT_EQ(server.create(18282), true);
+	EXPECT_EQ(server.bind(), true);
+	ctx.run();
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	EXPECT_EQ(server.unBind(), true);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	EXPECT_EQ(server.bind(), true);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	EXPECT_EQ(server.unBind(), true);
+
+	EXPECT_EQ(server.destroy(), true);
+	ctx.release();
 }
 
 TEST(TCP, ConnectTest) {
@@ -422,12 +448,98 @@ TEST(TCP, ConnectTest) {
 	cys::comm::app::TCPServer server(&ctx);
 	cys::comm::app::TCPClient client(&ctx);
 
+	EXPECT_EQ(server.create(18282), true);
+	EXPECT_EQ(client.create(), true);
+	ctx.run();
+
+	EXPECT_EQ(server.bind(), true);
+	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
+	EXPECT_EQ(client.disconnect(), true);
+
+	EXPECT_EQ(server.unBind(), true);
+	EXPECT_EQ(server.destroy(), true);
+	ctx.release();
+}
+
+TEST(TCP, MultiConnectTest) {
+	cys::comm::Context ctx;
+	cys::comm::app::TCPServer server(&ctx);
+	cys::comm::app::TCPClient client(&ctx);
+
+	EXPECT_EQ(server.create(18282), true);
+	EXPECT_EQ(client.create(), true);
+	ctx.run();
+
+	EXPECT_EQ(server.bind(), true);
+	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
+	EXPECT_EQ(client.disconnect(), true);
+	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
+	EXPECT_EQ(client.disconnect(), true);
+	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
+	EXPECT_EQ(client.disconnect(), true);
+
+	EXPECT_EQ(server.unBind(), true);
+	EXPECT_EQ(server.destroy(), true);
+	ctx.release();
+}
+
+/*
+class TCPClientListenerMock : public cys::comm::app::TCPClientListener {
+public:
+	MOCK_METHOD0(onTCPClientConnected, void());
+	MOCK_METHOD1(onTCPClientDisconnected, void(const boost::system::error_code& e));
+	MOCK_METHOD1(onTCPClientSent, void(const boost::system::error_code& e));
+	MOCK_METHOD2(onTCPClientReceived, void(const boost::system::error_code& e,
+		const std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM>& data));
+	MOCK_METHOD1(onTCPClientError, void(const boost::system::error_code& e));
+};
+
+TEST(TCP, ConnectListenerTest) {
+	cys::comm::Context ctx;
+	cys::comm::app::TCPServer server(&ctx);
+	cys::comm::app::TCPClient client(&ctx);
+	
+	TCPClientListenerMock mock;
+
 	server.create(18282);
 	EXPECT_EQ(server.bind(), true);
+	client.addListener(&mock);
 	client.create(28282);
 	ctx.run();
+
+	// Maybe stay some times...
+	std::this_thread::sleep_for(std::chrono::seconds(2));
+	EXPECT_CALL(mock, onTCPClientConnected());
+	EXPECT_CALL(mock, onTCPClientDisconnected(::testing::_));
 	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
 	client.destroy();
+	client.deleteListener(&mock);
+	server.unBind();
 	server.destroy();
 	ctx.release();
 }
+*/
+
+/*
+TEST(TCP, ConnectAsyncTest) {
+	cys::comm::Context ctx;
+	cys::comm::app::TCPServer server(&ctx);
+	cys::comm::app::TCPClient client(&ctx);
+
+	TCPClientListenerMock mock;
+
+	server.create(18282);
+	server.bind();
+	client.addListener(&mock);
+	client.create(28282);
+	EXPECT_CALL(mock, onTCPClientConnected());
+	EXPECT_EQ(client.connectAsync("127.0.0.1", 18282), true);
+	ctx.run();
+
+	EXPECT_CALL(mock, onTCPClientDisconnected(::testing::_));
+	client.disconnect();
+	server.destroy();
+	client.destroy();
+	ctx.release();
+}
+*/

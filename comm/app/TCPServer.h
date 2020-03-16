@@ -1,5 +1,7 @@
 #pragma once
 #include <shared_mutex>
+#include <unordered_map>
+#include "TCPSession.hpp"
 #include "comm/Context.h"
 #include "comm/app/TCPServerListener.h"
 
@@ -72,19 +74,27 @@ namespace app {
 		bool destroy();
 
 	private:
+		std::size_t createSession();
+		std::unique_ptr<TCPSession>& getSession(std::size_t channel);
+		bool deleteSession(std::size_t channel);
+		bool findSession(std::size_t channel);
+		void clearSession();
+
+	private:
 		void startAcceptAsync();
 		bool startReceiveAsync();
 
 	private:
 		mutable std::shared_mutex m_mutex;
 		mutable std::recursive_mutex m_conMtx;
-		mutable std::recursive_mutex m_sckMtx;
+		mutable std::shared_mutex m_ssMtx;
 		cys::comm::Context* m_context;
 		std::unique_ptr<tcp::acceptor> m_acceptor;
 
 	private:
 		uint16_t m_port;
 		std::vector<TCPServerListener*> m_listeners;
+		std::unordered_map<std::size_t, std::unique_ptr<TCPSession>> m_sessions;
 		std::array<uint8_t, MAX_BUFFER_NUM> m_buffer;
 		std::atomic<bool> m_isBinding;
 	};
