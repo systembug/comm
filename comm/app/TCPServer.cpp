@@ -100,7 +100,6 @@ namespace app {
 		}
 
 		startAcceptAsync();
-
 		m_isBinding.store(true, std::memory_order::memory_order_seq_cst);
 		return true;
 	}
@@ -139,15 +138,44 @@ namespace app {
 		return true;
 	}
 
+	void TCPServer::onTCPSessionBind(std::size_t channel)
+	{
+		for (auto& listener : m_listeners)
+			if (listener != nullptr) listener->onTCPServerBinded(channel);
+	}
+
+	void TCPServer::onTCPSessionUnBind(std::size_t channel)
+	{
+		for (auto& listener : m_listeners)
+			if (listener != nullptr) listener->onTCPServerUnBinded(channel);
+	}
+
+	void TCPServer::onTCPSessionSent(std::size_t channel, const boost::system::error_code& e)
+	{
+		for (auto& listener : m_listeners)
+			if (listener != nullptr) listener->onTCPServerSent(channel, e);
+	}
+
+	void TCPServer::onTCPsessionReceived(std::size_t channel, const boost::system::error_code& e, const std::array<uint8_t, MAX_BUFFER_NUM>& data)
+	{
+		for (auto& listener : m_listeners)
+			if (listener != nullptr) listener->onTCPServerReceived(channel, e, data);
+	}
+
 	std::size_t TCPServer::createSession() {
 		// std::unique_lock<std::shared_mutex> lock(m_ssMtx);
 		auto size = m_sessions.size();
 		if (m_sessions.find(size) != m_sessions.end()) {
 			m_sessions[size]->stop();
 			m_sessions[size]->destroy();
-			m_sessions[size] = std::make_unique<TCPSession>(m_context);
+			m_sessions[size] = std::make_unique<TCPSession>(m_context, size);
+			m_sessions[size]->addListener(this);
 		}
-		else m_sessions.emplace(size, std::make_unique<TCPSession>(m_context));
+		else {
+			auto session = std::make_unique<TCPSession>(m_context, size);
+			session->addListener(this);
+			m_sessions.emplace(size, std::move(session));
+		}
 		return size;
 	}
 
@@ -161,6 +189,7 @@ namespace app {
 		else {
 			m_sessions[channel]->stop();
 			m_sessions[channel]->destroy();
+			m_sessions[channel]->deleteListener(this);
 			m_sessions.erase(channel);
 			return true;
 		}
@@ -190,7 +219,7 @@ namespace app {
 			m_acceptor->async_accept(getSession(channel)->getSocket(), [this, channel](const boost::system::error_code& err) {
 				if (!err) {
 					for (auto& listener : m_listeners) {
-						if (listener != nullptr) listener->onTCPServerBinded();
+						if (listener != nullptr) listener->onTCPServerBinded(channel);
 					}
 
 					getSession(channel)->start();
@@ -208,26 +237,6 @@ namespace app {
 				if (m_isBinding.load(std::memory_order_seq_cst)) startAcceptAsync();
 			});			
 		}
-	}
-
-	bool TCPServer::startReceiveAsync()
-	{
-		std::unique_lock<std::recursive_mutex> lock(m_conMtx);
-		/*
-		std::unique_lock<std::recursive_mutex> lock(m_sckMtx);
-		if (m_socket.get() != nullptr) {
-			m_socket->async_receive(boost::asio::buffer(m_buffer),
-				[this](const boost::system::error_code& err, std::size_t transferred) {
-				if (!err && m_isBinding.load(std::memory_order::memory_order_seq_cst)) {
-					for (auto& listener : m_listeners) {
-						if (listener != nullptr) listener->onTCPServerReceived(err, m_buffer);
-					}
-					startReceiveAsync();
-				}
-			});
-		}
-		*/
-		return true;
 	}
 }
 }

@@ -68,17 +68,7 @@ namespace app {
 		if (m_socket.get() != nullptr) return false;
 		if (m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
 		if (port <= 0) return false;
-
-		try {
-			m_socket = std::make_unique<tcp::socket>(m_context->getContext());
-		}
-		catch (boost::system::system_error& e) {
-			std::cout << "Socket Create Error: " << e.what() << std::endl;
-			for (auto& listener : m_listeners) {
-				if (listener != nullptr) listener->onTCPClientError(e.code());
-			}
-			return false;
-		}
+		if (!makeSocket()) return false;
 
 		try {
 			m_socket->connect(tcp::endpoint(boost::asio::ip::address::from_string(address), port));
@@ -104,9 +94,11 @@ namespace app {
 	bool TCPClient::connectAsync(const char* address, uint16_t port)
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		if (m_socket.get() == nullptr) return false;
+		if (m_socket.get() != nullptr) return false;
 		if (m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
 		if (port <= 0) return false;
+		if (!makeSocket()) return false;		
+
 		m_socket->async_connect(tcp::endpoint(boost::asio::ip::address::from_string(address), port),
 			[this](const boost::system::error_code& e) {
 			if (!e) {
@@ -174,7 +166,24 @@ namespace app {
 		}
 	}
 
-	void TCPClient::resetSocket() {
+	bool TCPClient::makeSocket()
+	{
+		try {
+			m_socket = std::make_unique<tcp::socket>(m_context->getContext());
+		}
+		catch (boost::system::system_error & e) {
+			std::cout << "Socket Create Error: " << e.what() << std::endl;
+			for (auto& listener : m_listeners) {
+				if (listener != nullptr) listener->onTCPClientError(e.code());
+			}
+			return false;
+		}
+
+		return true;
+	}
+
+	void TCPClient::resetSocket() 
+	{
 		boost::system::error_code ec;
 		m_socket->cancel(ec);
 		m_socket->shutdown(tcp::socket::shutdown_both, ec);

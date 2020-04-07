@@ -92,6 +92,7 @@ namespace app {
 
 	private:
 		void startReceiveAsync();
+		bool makeSocket();
 		void resetSocket();
 
 	private:

@@ -4,15 +4,16 @@
 #include "TCPSession.hpp"
 #include "comm/Context.h"
 #include "comm/app/TCPServerListener.h"
+#include "TCPSessionListener.h"
 
 namespace cys {
 namespace comm {
 namespace app {
 	using tcp = boost::asio::ip::tcp;
-	class TCPServer {
+	class TCPServer : public TCPSessionListener {
 	public:
 		TCPServer(Context* ctx);
-		~TCPServer();
+		virtual ~TCPServer();
 		TCPServer(const TCPServer& server) = delete;
 		TCPServer(TCPServer&& server) noexcept;
 		TCPServer& operator=(const TCPServer& server) = delete;
@@ -73,6 +74,12 @@ namespace app {
 		bool unBind();
 		bool destroy();
 
+	public:
+		void onTCPSessionBind(std::size_t channel) override;
+		void onTCPSessionUnBind(std::size_t channel) override;
+		void onTCPSessionSent(std::size_t channel, const boost::system::error_code& e) override;
+		void onTCPsessionReceived(std::size_t channel, const boost::system::error_code& e, const std::array<uint8_t, MAX_BUFFER_NUM>& data) override;
+
 	private:
 		std::size_t createSession();
 		std::unique_ptr<TCPSession>& getSession(std::size_t channel);
@@ -82,7 +89,6 @@ namespace app {
 
 	private:
 		void startAcceptAsync();
-		bool startReceiveAsync();
 
 	private:
 		mutable std::shared_mutex m_mutex;

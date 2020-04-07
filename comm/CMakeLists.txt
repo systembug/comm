@@ -1,18 +1,21 @@
 cmake_minimum_required(VERSION 3.5.2)
 project(comm)
-add_definitions("-Wall -std=c++17 -O2")
+add_definitions("-Wall -std=c++17")
 
-message(STATUS "Check the boost 1.72")
-set(BOOST_INSTALL /home/ubuntu/boost)
-set(BOOST_INCLUDE_DIR ${BOOST_INSTALL}/boost_1_72_0)
-set(BOOST_LIB_DIR ${BOOST_INCLUDE_DIR}/stage/lib)
-set(BOOST_LIBRARIES ${BOOST_LIB_DIR}/libboost_filesystem.a ${BOOST_LIB_DIR}/libboost_system.a)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup()
+
+# message(STATUS "Check the boost 1.72")
+# set(BOOST_INSTALL /home/ubuntu/boost)
+# set(BOOST_INCLUDE_DIR ${BOOST_INSTALL}/boost_1_72_0)
+# set(BOOST_LIB_DIR ${BOOST_INCLUDE_DIR}/stage/lib)
+# set(BOOST_LIBRARIES ${BOOST_LIB_DIR}/libboost_filesystem.a ${BOOST_LIB_DIR}/libboost_system.a)
 
 message(STATUS "PThread..")
 find_package(Threads REQUIRED)
 
 include_directories(${PROJECT_SOURCE_DIR}/../)
-include_directories(${BOOST_INCLUDE_DIR})
+# include_directories(${BOOST_INCLUDE_DIR})
 message(STATUS "Root DIR:" ${PROJECT_SOURCE_DIR}/../)
 
 file(GLOB_RECURSE source_list 
