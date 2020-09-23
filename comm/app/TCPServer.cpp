@@ -1,4 +1,5 @@
 #include "TCPServer.h"
+#include <boost/bind.hpp>
 #include <iostream>
 
 namespace cys {
@@ -112,7 +113,7 @@ namespace app {
 		
 		// std::cout << "unBind" << std::endl;
 		
-		// clearSession();
+		clearSession();
 		m_isBinding.store(false, std::memory_order::memory_order_seq_cst);
 		{
 			std::unique_lock<std::recursive_mutex> lock(m_conMtx);
@@ -156,30 +157,21 @@ namespace app {
 			if (listener != nullptr) listener->onTCPServerSent(channel, e);
 	}
 
-	void TCPServer::onTCPsessionReceived(std::size_t channel, const boost::system::error_code& e, const std::array<uint8_t, MAX_BUFFER_NUM>& data)
+	void TCPServer::onTCPSessionReceived(std::size_t channel, const boost::system::error_code& e, const std::array<uint8_t, MAX_BUFFER_NUM>& data)
 	{
 		for (auto& listener : m_listeners)
 			if (listener != nullptr) listener->onTCPServerReceived(channel, e, data);
 	}
 
-	std::size_t TCPServer::createSession() {
-		// std::unique_lock<std::shared_mutex> lock(m_ssMtx);
+	std::shared_ptr<TCPSession> TCPServer::createSession() {
 		auto size = m_sessions.size();
-		if (m_sessions.find(size) != m_sessions.end()) {
-			m_sessions[size]->stop();
-			m_sessions[size]->destroy();
-			m_sessions[size] = std::make_unique<TCPSession>(m_context, size);
-			m_sessions[size]->addListener(this);
-		}
-		else {
-			auto session = std::make_unique<TCPSession>(m_context, size);
-			session->addListener(this);
-			m_sessions.emplace(size, std::move(session));
-		}
-		return size;
+		return std::make_shared<TCPSession>(m_context, size);
+		// session->addListener(this);
+		// m_sessions.emplace(size, std::move(session));
+		// return size;
 	}
 
-	std::unique_ptr<TCPSession>& TCPServer::getSession(std::size_t channel) {
+	std::shared_ptr<TCPSession>& TCPServer::getSession(std::size_t channel) {
 		// std::shared_lock<std::shared_mutex> lock(m_ssMtx);
 		return m_sessions[channel];
 	}
@@ -214,29 +206,44 @@ namespace app {
 	{
 		// std::unique_lock<std::recursive_mutex> lock(m_conMtx);
 		if (m_acceptor != nullptr) {
-			auto channel = createSession();
-			getSession(channel)->create();
-			m_acceptor->async_accept(getSession(channel)->getSocket(), [this, channel](const boost::system::error_code& err) {
-				if (!err) {
-					for (auto& listener : m_listeners) {
-						if (listener != nullptr) listener->onTCPServerBinded(channel);
-					}
-
-					getSession(channel)->start();
-				}
-				else {
-					std::cout << err.message() << std::endl;
-					std::unique_lock<std::shared_mutex> lock(m_ssMtx);
-					if (findSession(channel)) {
-						getSession(channel)->stop();
-						getSession(channel)->destroy();
-						deleteSession(channel);
-					}
-				}
-
-				if (m_isBinding.load(std::memory_order_seq_cst)) startAcceptAsync();
-			});			
+			auto session = createSession();
+			session->create();
+			m_acceptor->async_accept(session->getSocket(), 
+				boost::bind(&TCPServer::handleAcceptAsync, this, session,
+				boost::asio::placeholders::error));
 		}
+	}
+
+	void TCPServer::handleAcceptAsync(std::shared_ptr<TCPSession> session,
+		const boost::system::error_code& error)
+	{
+		if (!error) {
+			session->addListener(this);
+			auto channel = m_sessions.size();
+			m_sessions.emplace(m_sessions.size(), std::move(session));
+
+			for (auto& listener : m_listeners) {
+				if (listener != nullptr) listener->onTCPServerBinded(channel);
+			}
+
+			getSession(channel)->start();
+			startAcceptAsync();
+		}
+		else {
+			std::cout << error.message() << std::endl;
+			std::unique_lock<std::shared_mutex> lock(m_ssMtx);
+			session->destroy();
+			session->deleteListener(this);
+			/*
+			if (findSession(channel)) {
+				getSession(channel)->stop();
+				getSession(channel)->destroy();
+				deleteSession(channel);
+			}
+			*/
+		}
+
+		// if (m_isBinding.load(std::memory_order_seq_cst)) startAcceptAsync();
 	}
 }
 }

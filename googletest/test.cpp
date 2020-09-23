@@ -618,9 +618,9 @@ public:
 };
 
 TEST(TCP, SendTest) {
-	cys::comm::Context ctx;
+	cys::comm::Context ctx, ctx1;
 	cys::comm::app::TCPServer server(&ctx);
-	cys::comm::app::TCPClient client(&ctx);
+	cys::comm::app::TCPClient client(&ctx1);
 
 	TCPServerListenerMock mock;
 
@@ -628,11 +628,13 @@ TEST(TCP, SendTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onTCPServerBinded(::testing::_));
 	server.bind();
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	// std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	client.create();
 	client.connect("127.0.0.1", 18282);
 	ctx.run();
+	ctx1.run();
+
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
 	EXPECT_CALL(mock, onTCPServerReceived(::testing::_, ::testing::_, arr));
 	EXPECT_CALL(mock, onTCPServerUnBinded(::testing::_));
@@ -641,14 +643,16 @@ TEST(TCP, SendTest) {
 	client.disconnect();
 	client.destroy();
 	server.destroy();
+	
+	ctx1.release();
 	ctx.release();
 }
 
 TEST(TCP, MultiSendTest) {
-	cys::comm::Context ctx;
+	cys::comm::Context ctx, ctx1, ctx2;
 	cys::comm::app::TCPServer server(&ctx);
-	cys::comm::app::TCPClient client1(&ctx);
-	cys::comm::app::TCPClient client2(&ctx);
+	cys::comm::app::TCPClient client1(&ctx1);
+	cys::comm::app::TCPClient client2(&ctx2);
 
 	TCPServerListenerMock mock;
 
@@ -661,14 +665,17 @@ TEST(TCP, MultiSendTest) {
 	client2.create();
 
 	ctx.run();
+	ctx1.run();
+	ctx2.run();
+
+	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr1 = { "TEST" };
+
+	EXPECT_CALL(mock, onTCPServerReceived(::testing::_, ::testing::_, arr1)).Times(2);
+	EXPECT_CALL(mock, onTCPServerUnBinded(::testing::_)).Times(2);
 
 	client1.connect("127.0.0.1", 18282);
 	client2.connect("127.0.0.1", 18282);
 	
-	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr1 = { "TEST" };
-
-	EXPECT_CALL(mock, onTCPServerReceived(::testing::_, ::testing::_, arr1)).Times(2);
-	EXPECT_CALL(mock, onTCPServerUnBinded(::testing::_));
 	EXPECT_EQ(client1.send("TEST"), true);
 	EXPECT_EQ(client2.send("TEST"), true);
 
@@ -677,5 +684,8 @@ TEST(TCP, MultiSendTest) {
 	client2.disconnect();
 	client2.destroy();
 	server.destroy();
+
+	ctx2.release();
+	ctx1.release();
 	ctx.release();
 }

@@ -31,6 +31,8 @@
     <ClInclude Include="app\Const.h" />
     <ClInclude Include="app\UDPServer.h" />
     <ClInclude Include="app\UDPServerListener.h" />
+    <ClInclude Include="app\UDPSession.hpp" />
+    <ClInclude Include="app\UDPSessionListener.h" />
     <ClInclude Include="comm.hpp" />
     <ClInclude Include="Context.h" />
     <ClInclude Include="transport\TCP.hpp" />

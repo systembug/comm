@@ -39,36 +39,49 @@ namespace app {
 		bool bind();
 
 		template <class Data>
-		bool send(Data&& data) {
+		bool send(std::size_t channel, Data&& data) {
 			std::shared_lock<std::shared_mutex> lock(m_mutex);
-			/*
-			if (m_socket.get() == nullptr) return false;
 			if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
-			try {
-				m_socket->send(boost::asio::buffer(std::forward<Data>(data)));
-			}
-			catch (boost::system::system_error& e) {
-				e.code();
-				return false;
-			}
-			*/
+			if (m_sessions.find(channel) == m_sessions.end()) return false;
+			m_sessions[channel]->getSocket().send(boost::asio::buffer(std::forward<Data>(data)));
 			return true;
 		}
 
 		template <class Data>
-		bool sendAsync(Data&& data) {
-			std::shared_lock<std::shared_mutex> lock(m_mutex);
-			/*
-			if (m_socket.get() == nullptr) return false;
-			if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
-			m_socket->async_send(boost::asio::buffer(std::forward<Data>(data)),
-				[](const boost::system::error_code& e, std::size_t transferred) {
-				for (auto& listener : m_listeners) {
-					if (listener != nullptr) listener->onReceivedSent(e);
-				}
-			});
-			*/
+		bool sendAsync(std::size_t channel, Data&& data) {
 			return true;
+		}
+
+		template <class Data>
+		bool sendAll(Data&& data) {
+			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
+			if (m_sessions.empty()) return false;
+			for (auto& session : m_sessions) {
+				auto& socket = session.second->getSocket();
+				socket.send(boost::asio::buffer(std::forward<Data>(data)));
+			}
+
+			return true;
+		}
+
+		template <class Data>
+		bool sendAllAsync(Data&& data) {
+			std::shared_lock<std::shared_mutex> lock(m_mutex);
+			if (!m_isBinding.load(std::memory_order::memory_order_seq_cst)) return false;
+			if (m_sessions.empty()) return false;
+			for (auto& session : m_sessions) {
+				auto& socket = session.second->getSocket();
+				socket->async_send(boost::asio::buffer(std::forward<Data>(data)),
+					[](const boost::system::error_code& e, std::size_t transferred) {
+						for (auto& listener : m_listeners) {
+							if (listener != nullptr) listener->onReceivedSent(e);
+						}
+					});
+			}
+
+			return true;
+
 		}
 
 		bool unBind();
@@ -78,17 +91,19 @@ namespace app {
 		void onTCPSessionBind(std::size_t channel) override;
 		void onTCPSessionUnBind(std::size_t channel) override;
 		void onTCPSessionSent(std::size_t channel, const boost::system::error_code& e) override;
-		void onTCPsessionReceived(std::size_t channel, const boost::system::error_code& e, const std::array<uint8_t, MAX_BUFFER_NUM>& data) override;
+		void onTCPSessionReceived(std::size_t channel, const boost::system::error_code& e, const std::array<uint8_t, MAX_BUFFER_NUM>& data) override;
 
 	private:
-		std::size_t createSession();
-		std::unique_ptr<TCPSession>& getSession(std::size_t channel);
+		std::shared_ptr<TCPSession> createSession();
+		std::shared_ptr<TCPSession>& getSession(std::size_t channel);
 		bool deleteSession(std::size_t channel);
 		bool findSession(std::size_t channel);
 		void clearSession();
 
 	private:
 		void startAcceptAsync();
+		void handleAcceptAsync(std::shared_ptr<TCPSession> session,
+			const boost::system::error_code& error);
 
 	private:
 		mutable std::shared_mutex m_mutex;
@@ -100,7 +115,7 @@ namespace app {
 	private:
 		uint16_t m_port;
 		std::vector<TCPServerListener*> m_listeners;
-		std::unordered_map<std::size_t, std::unique_ptr<TCPSession>> m_sessions;
+		std::unordered_map<std::size_t, std::shared_ptr<TCPSession>> m_sessions;
 		std::array<uint8_t, MAX_BUFFER_NUM> m_buffer;
 		std::atomic<bool> m_isBinding;
 	};

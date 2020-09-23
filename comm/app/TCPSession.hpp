@@ -107,12 +107,12 @@ namespace app {
 						if (!err) {
 							for (auto& listener : m_listeners) {
 								if (listener != nullptr) 
-									listener->onTCPsessionReceived(m_channel, err, m_buffer);
+									listener->onTCPSessionReceived(m_channel, err, m_buffer);
 							}
 							startReceiveAsync();
 						}	
 						else {
-							closeSocket();
+							// closeSocket();
 						}
 					});
 			}
@@ -121,10 +121,11 @@ namespace app {
 		}
 
 		bool closeSocket() {
+			if (m_socket.get() == nullptr) return true;
 			boost::system::error_code ec;
 			m_socket->shutdown(tcp::socket::shutdown_both, ec);
 			m_socket->close();
-			m_socket.reset();
+			// m_socket.reset();
 
 			return true;
 		}
