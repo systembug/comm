@@ -54,13 +54,11 @@ namespace app {
 		return *this;
 	}
 
-	bool UDPClient::create(uint16_t port) 
+	bool UDPClient::create() 
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-
-		m_port = port;
 		try {
-			m_socket = std::make_unique<udp::socket>(m_context->getContext(), udp::endpoint(udp::v4(), m_port));
+			m_socket = std::make_unique<udp::socket>(m_context->getContext(), udp::endpoint());
 		}
 		catch (boost::system::system_error& e) {
 			for (auto& listener : m_listeners) {
@@ -68,6 +66,7 @@ namespace app {
 			}
 			return false;
 		}
+		m_port = m_socket->local_endpoint().port();
 		return true;
 	}
 

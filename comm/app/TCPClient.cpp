@@ -8,6 +8,7 @@ namespace app {
 		: m_mutex()
 		, m_sckMtx()
 		, m_context(ctx)
+		, m_port(0)
 		, m_listeners()
 		, m_socket(nullptr)
 		, m_buffer()
@@ -26,6 +27,7 @@ namespace app {
 		std::unique_lock<std::shared_mutex> lock(client.m_mutex);
 		std::unique_lock<std::recursive_mutex> lk(client.m_sckMtx);
 		m_context = std::move(client.m_context);
+		m_port = std::move(client.m_port);
 		m_listeners = std::move(client.m_listeners);
 		m_socket = std::move(client.m_socket);
 		m_buffer = std::move(client.m_buffer);
@@ -41,6 +43,7 @@ namespace app {
 			std::unique_lock<std::recursive_mutex> lk4(m_sckMtx, std::defer_lock);
 			std::lock(lk1, lk2, lk3, lk4);
 			m_context = std::move(client.m_context);
+			m_port = std::move(client.m_port);
 			m_listeners = std::move(client.m_listeners);
 			m_socket = std::move(client.m_socket);
 			m_buffer = std::move(client.m_buffer);
@@ -56,18 +59,12 @@ namespace app {
 		return true;
 	}
 
-	bool TCPClient::create(uint16_t port)
-	{
-		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		return true;
-	}
-
 	bool TCPClient::connect(const char* address, uint16_t port)
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		if (m_socket.get() != nullptr) return false;
 		if (m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
 		if (port <= 0) return false;
+
 		if (!makeSocket()) return false;
 
 		try {
@@ -94,10 +91,10 @@ namespace app {
 	bool TCPClient::connectAsync(const char* address, uint16_t port)
 	{
 		std::unique_lock<std::shared_mutex> lock(m_mutex);
-		if (m_socket.get() != nullptr) return false;
 		if (m_isConnecting.load(std::memory_order::memory_order_seq_cst)) return false;
-		if (port <= 0) return false;
-		if (!makeSocket()) return false;		
+		if (port <= 0) return false;	
+
+		if (!makeSocket()) return false;
 
 		m_socket->async_connect(tcp::endpoint(boost::asio::ip::address::from_string(address), port),
 			[this](const boost::system::error_code& e) {
@@ -169,7 +166,7 @@ namespace app {
 	bool TCPClient::makeSocket()
 	{
 		try {
-			m_socket = std::make_unique<tcp::socket>(m_context->getContext());
+			m_socket = std::make_unique<tcp::socket>(m_context->getContext(), tcp::endpoint());
 		}
 		catch (boost::system::system_error & e) {
 			std::cout << "Socket Create Error: " << e.what() << std::endl;
@@ -179,6 +176,7 @@ namespace app {
 			return false;
 		}
 
+		m_port = m_socket->local_endpoint().port();
 		return true;
 	}
 

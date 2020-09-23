@@ -32,19 +32,9 @@ TEST(UDP, CreateValidTest) {
 	cys::comm::app::UDPServer server(&ctx);
 	cys::comm::app::UDPClient client(&ctx);
 	EXPECT_EQ(server.create(18282), true);
-	EXPECT_EQ(client.create(28282), true);
+	EXPECT_EQ(client.create(), true);
 	EXPECT_EQ(server.destroy(), true);
 	EXPECT_EQ(client.destroy(), true);
-}
-
-TEST(UDP, SamePortExceptionTest) {
-	cys::comm::Context ctx;
-	cys::comm::app::UDPServer server(&ctx);
-	cys::comm::app::UDPClient client(&ctx);
-	server.create(18282);	
-	EXPECT_EQ(client.create(18282), false);
-	server.destroy();
-	client.destroy();
 }
 
 TEST(UDP, ConnectTest) {
@@ -54,7 +44,7 @@ TEST(UDP, ConnectTest) {
 	
 	server.create(18282);
 	EXPECT_EQ(server.bind(), true);
-	client.create(28282);
+	client.create();
 	ctx.run();
 	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
 	client.destroy();
@@ -83,7 +73,7 @@ TEST(UDP, ConnectAsyncTest) {
 	server.create(18282);
 	server.bind();
 	client.addListener(&mock);
-	client.create(28282);
+	client.create();
 	EXPECT_CALL(mock, onUDPClientConnected());
 	client.connectAsync("127.0.0.1", 18282);
 	ctx.run();
@@ -152,7 +142,7 @@ TEST(UDP, SendTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onUDPServerBinded());
 	server.bind();
-	client.create(28282);
+	client.create();
 	client.connect("127.0.0.1", 18282);
 	ctx.run();
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
@@ -178,8 +168,8 @@ TEST(UDP, MultiSendTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onUDPServerBinded());
 	server.bind();
-	client1.create(28282);
-	client2.create(28283);
+	client1.create();
+	client2.create();
 	client1.connect("127.0.0.1", 18282);
 	client2.connect("127.0.0.1", 18282);
 
@@ -188,6 +178,7 @@ TEST(UDP, MultiSendTest) {
 	EXPECT_CALL(mock, onUDPServerReceived(::testing::_, arr)).Times(2);
 	EXPECT_CALL(mock, onUDPServerUnBinded());
 	EXPECT_EQ(client1.send("TEST"), true);
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	EXPECT_EQ(client2.send("TEST"), true);
 
 	client1.disconnect();
@@ -209,7 +200,7 @@ TEST(UDP, SendTestWithStreamBuf) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onUDPServerBinded());
 	server.bind();
-	client.create(28282);
+	client.create();
 	client.connect("127.0.0.1", 18282);
 	ctx.run();
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
@@ -238,7 +229,7 @@ TEST(UDP, SendAsyncTest) {
 	server.addListener(&sMock);
 	EXPECT_CALL(sMock, onUDPServerBinded());
 	server.bind();
-	client.create(28282);
+	client.create();
 	client.addListener(&cMock);
 	EXPECT_CALL(cMock, onUDPClientConnected());
 	client.connect("127.0.0.1", 18282);
@@ -268,7 +259,7 @@ TEST(UDP, SendToTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onUDPServerBinded());
 	server.bind();
-	client.create(28282);
+	client.create();
 	ctx.run();
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
 	EXPECT_CALL(mock, onUDPServerReceived(::testing::_, arr));
@@ -292,7 +283,7 @@ TEST(UDP, SendToAsyncTest) {
 	server.addListener(&sMock);
 	EXPECT_CALL(sMock, onUDPServerBinded());
 	server.bind();
-	client.create(28282);
+	client.create();
 	client.addListener(&cMock);
 	ctx.run();
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
@@ -319,7 +310,7 @@ TEST(UDP, SendBroadCastTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onUDPServerBinded());
 	server.bind();
-	client.create(28282);
+	client.create();
 	ctx.run();
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
 	EXPECT_CALL(mock, onUDPServerReceived(::testing::_, arr));
@@ -342,7 +333,7 @@ TEST(UDP, SendBroadFailTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onUDPServerBinded());
 	server.bind();
-	client.create(28282);
+	client.create();
 	client.connect("127.0.0.1", 18282);
 	ctx.run();
 	std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM> arr = { "TEST" };
@@ -402,19 +393,19 @@ TEST(UDP, ReceiveFromTestWithStreamBuf) {
 	boost::asio::streambuf buf;
 	std::istream is(&buf);
 	auto re = std::async(std::launch::async, [&client, &buf]() {
-		client.receiveFrom(28282, buf);
+		client.receiveFrom(28283, buf);
 	});
 
 	// Maybe stay some times...
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 
 	std::string arr("TEST");
-	server.sendTo("127.0.0.1", 28282, arr);
+	server.sendTo("127.0.0.1", 28283, arr);
+	if (re.valid()) re.get();
 	std::string recv;	
 	is >> recv;
 
 	EXPECT_EQ((arr == recv), true);
-	re.get();
 	client.destroy();
 	server.destroy();
 	ctx.release();
@@ -476,14 +467,17 @@ TEST(TCP, MultiBindTest) {
 }
 
 TEST(TCP, ConnectTest) {
-	cys::comm::Context ctx;
+	cys::comm::Context ctx, ctx1;
 	cys::comm::app::TCPServer server(&ctx);
-	cys::comm::app::TCPClient client(&ctx);
+	cys::comm::app::TCPClient client(&ctx1);
 
 	EXPECT_EQ(server.create(18282), true);
 	EXPECT_EQ(client.create(), true);
 	EXPECT_EQ(server.bind(), true);
 	ctx.run();
+	ctx1.run();
+
+	// std::this_thread::sleep_for(std::chrono::seconds(1));
 
 	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
 	EXPECT_EQ(client.disconnect(), true);
@@ -492,18 +486,21 @@ TEST(TCP, ConnectTest) {
 	EXPECT_EQ(server.destroy(), true);
 	EXPECT_EQ(client.destroy(), true);
 	ctx.release();
+	ctx1.release();
 }
 
 TEST(TCP, ReConnectTest) {
-	cys::comm::Context ctx;
+	cys::comm::Context ctx, ctx1;
 	cys::comm::app::TCPServer server(&ctx);
-	cys::comm::app::TCPClient client(&ctx);
+	cys::comm::app::TCPClient client(&ctx1);
 
 	EXPECT_EQ(server.create(18282), true);
 	EXPECT_EQ(client.create(), true);
 	EXPECT_EQ(server.bind(), true);
 	ctx.run();
+	ctx1.run();
 
+	// std::this_thread::sleep_for(std::chrono::seconds(1));
 	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
 	EXPECT_EQ(client.disconnect(), true);
 	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
@@ -515,20 +512,24 @@ TEST(TCP, ReConnectTest) {
 	EXPECT_EQ(server.destroy(), true);
 	EXPECT_EQ(client.destroy(), true);
 	ctx.release();
+	ctx1.release();
 }
 
 TEST(TCP, MultiConnectTest) {
-	cys::comm::Context ctx;
+	cys::comm::Context ctx, ctx1, ctx2;
 	cys::comm::app::TCPServer server(&ctx);
-	cys::comm::app::TCPClient client1(&ctx);
-	cys::comm::app::TCPClient client2(&ctx);
+	cys::comm::app::TCPClient client1(&ctx1);
+	cys::comm::app::TCPClient client2(&ctx2);
 
 	EXPECT_EQ(server.create(18282), true);
 	EXPECT_EQ(client1.create(), true);
 	EXPECT_EQ(client2.create(), true);
 	ctx.run();
+	ctx1.run();
+	ctx2.run();
 
 	EXPECT_EQ(server.bind(), true);
+	// std::this_thread::sleep_for(std::chrono::seconds(1));
 	EXPECT_EQ(client1.connect("127.0.0.1", 18282), true);
 	EXPECT_EQ(client2.connect("127.0.0.1", 18282), true);
 		
@@ -541,6 +542,8 @@ TEST(TCP, MultiConnectTest) {
 	EXPECT_EQ(client1.destroy(), true);
 	EXPECT_EQ(client2.destroy(), true);
 
+	ctx2.release();
+	ctx1.release();
 	ctx.release();
 }
 
@@ -568,7 +571,7 @@ TEST(TCP, ConnectListenerTest) {
 	ctx.run();
 
 	// Maybe stay some times...
-	std::this_thread::sleep_for(std::chrono::seconds(2));
+	std::this_thread::sleep_for(std::chrono::seconds(1));
 	EXPECT_CALL(mock, onTCPClientConnected());
 	EXPECT_CALL(mock, onTCPClientDisconnected(::testing::_));
 	EXPECT_EQ(client.connect("127.0.0.1", 18282), true);
@@ -580,9 +583,9 @@ TEST(TCP, ConnectListenerTest) {
 }
 
 TEST(TCP, ConnectAsyncTest) {
-	cys::comm::Context ctx;
+	cys::comm::Context ctx, ctx1;
 	cys::comm::app::TCPServer server(&ctx);
-	cys::comm::app::TCPClient client(&ctx);
+	cys::comm::app::TCPClient client(&ctx1);
 
 	TCPClientListenerMock mock;
 
@@ -590,15 +593,19 @@ TEST(TCP, ConnectAsyncTest) {
 	server.bind();
 	client.addListener(&mock);
 	client.create();
+	ctx.run();
+	ctx1.run();
+	// std::this_thread::sleep_for(std::chrono::seconds(1));
+
 	EXPECT_CALL(mock, onTCPClientConnected());
 	EXPECT_EQ(client.connectAsync("127.0.0.1", 18282), true);
-	ctx.run();
 
 	EXPECT_CALL(mock, onTCPClientDisconnected(::testing::_));
 	client.disconnect();
 	server.destroy();
 	client.destroy();
 	ctx.release();
+	ctx1.release();
 }
 
 class TCPServerListenerMock : public cys::comm::app::TCPServerListener {
@@ -621,6 +628,8 @@ TEST(TCP, SendTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onTCPServerBinded(::testing::_));
 	server.bind();
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+
 	client.create();
 	client.connect("127.0.0.1", 18282);
 	ctx.run();
@@ -647,6 +656,7 @@ TEST(TCP, MultiSendTest) {
 	server.addListener(&mock);
 	EXPECT_CALL(mock, onTCPServerBinded(::testing::_)).Times(2);
 	server.bind();
+	std::this_thread::sleep_for(std::chrono::seconds(1));
 	client1.create();
 	client2.create();
 

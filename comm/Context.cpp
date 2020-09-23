@@ -45,8 +45,9 @@ namespace comm {
 
 	bool Context::run() {
 		if (m_threadNum < 1) return false;
+		if (m_work.get() == nullptr) 
+			m_work = std::make_unique<boost::asio::io_context::work>(*m_context);		
 
-		if (m_work.get() == nullptr) m_work = std::make_unique<boost::asio::io_context::work>(*m_context);		
 		m_threads.reserve(m_threadNum);
 		for (unsigned int i = 0; i < m_threadNum; ++i) {
 			m_threads.emplace_back(std::async(std::launch::async, [this]() {

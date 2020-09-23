@@ -35,7 +35,6 @@ namespace app {
 
 	public:
 		bool create();
-		bool create(uint16_t port);
 		bool connect(const char* address, uint16_t port);
 		inline bool connect(const std::string& address, uint16_t port) {
 			return connect(address.c_str(), port);
@@ -88,7 +87,8 @@ namespace app {
 		bool receiveAsync();
 		bool disconnect();
 		bool destroy();
-		inline bool isConnecting() { return m_isConnecting.load(std::memory_order::memory_order_seq_cst); }
+		inline bool isConnecting() const { return m_isConnecting.load(std::memory_order::memory_order_seq_cst); }
+		inline uint16_t getPort() const { return m_port;  }
 
 	private:
 		void startReceiveAsync();
@@ -101,6 +101,7 @@ namespace app {
 		cys::comm::Context* m_context;
 
 	private:
+		uint16_t m_port;
 		std::vector<TCPClientListener*> m_listeners;
 		std::unique_ptr<tcp::socket> m_socket;
 		std::array<uint8_t, MAX_BUFFER_NUM> m_buffer;
