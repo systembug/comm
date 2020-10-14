@@ -65,14 +65,14 @@ namespace cys::comm::wrapper {
         return m_server->bind();
     }
 
-    bool TCPServer::send(const std::string &data)
+    bool TCPServer::send(std::size_t channel, const std::string &data)
     {
-        return m_server->send(data);
+        return m_server->send(channel, data);
     }
 
-    bool TCPServer::sendAsync(const std::string &data)
+    bool TCPServer::sendAsync(std::size_t channel, const std::string &data)
     {
-        return m_server->sendAsync(data);
+        return m_server->sendAsync(channel, data);
     }
 
     bool TCPServer::unBind()

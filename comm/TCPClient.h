@@ -1,6 +1,6 @@
 #pragma once
 #include "Ctx.h"
-#include "EndPoint.h"
+#include <string>
 
 namespace cys {
     namespace comm {

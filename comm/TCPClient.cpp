@@ -60,11 +60,6 @@ namespace cys::comm::wrapper {
         return m_client->create();
     }
 
-    bool TCPClient::create(uint16_t port)
-    {
-        return m_client->create(port);
-    }
-
     bool TCPClient::connect(const char* address, uint16_t port)
     {
         return m_client->connect(address, port);

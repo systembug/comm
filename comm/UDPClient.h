@@ -64,7 +64,6 @@ namespace wrapper {
 
 	public:
 		bool create();
-		bool create(uint16_t port);
 		bool connect(const char* address, uint16_t port);
 		bool connect(const std::string& address, uint16_t port) ;
 		bool connectAsync(const char* address, uint16_t port);

@@ -51,10 +51,6 @@ namespace wrapper {
 		return m_client->create();
 	}
 
-	bool UDPClient::create(uint16_t port) {
-		return m_client->create(port);
-	}
-
 	bool UDPClient::connect(const char* address, uint16_t port) {
 		return m_client->connect(address, port);
 	}
