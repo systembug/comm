@@ -72,10 +72,10 @@ namespace app {
 			if (m_sessions.empty()) return false;
 			for (auto& session : m_sessions) {
 				auto& socket = session.second->getSocket();
-				socket->async_send(boost::asio::buffer(std::forward<Data>(data)),
-					[](const boost::system::error_code& e, std::size_t transferred) {
+				socket.async_send(boost::asio::buffer(std::forward<Data>(data)),
+					[this](const boost::system::error_code& e, std::size_t transferred) {
 						for (auto& listener : m_listeners) {
-							if (listener != nullptr) listener->onReceivedSent(e);
+							// if (listener != nullptr) listener->onTCPServerSent(e);
 						}
 					});
 			}
