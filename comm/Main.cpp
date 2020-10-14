@@ -9,6 +9,29 @@
 #include "comm/app/TCPClient.h"
 #include "comm/Context.h"
 #include "ViewerData.h"
+#include "comm/app/TCPServer.h"
+#include "comm/app/TCPServerListener.h"
+
+class TCPListener : public cys::comm::app::TCPServerListener {
+private:
+    // std::string testStr;
+    std::vector<uint8_t> testStr;
+
+public:
+    TCPListener()
+            : cys::comm::app::TCPServerListener()
+    {}
+
+    void onTCPServerBinded(std::size_t channel) override
+    {}
+    void onTCPServerUnBinded(std::size_t channel) override
+    {}
+    void onTCPServerSent(std::size_t channel, const boost::system::error_code& e) override
+    {}
+    void onTCPServerReceived(std::size_t channel, const boost::system::error_code& e,
+                             const std::array<uint8_t, cys::comm::app::MAX_BUFFER_NUM>& data) override
+    {}
+};
 
 class Listener : public cys::comm::app::UDPServerListener {
 private:
@@ -63,6 +86,24 @@ public:
 
 int main()
 {
+    cys::comm::Context ctx;
+    cys::comm::app::TCPServer server(&ctx);
+    // client.create();
+    server.create(60001);
+    server.bind();
+    ctx.run();
+
+    TCPListener listener;
+    server.addListener(&listener);
+
+    std::this_thread::sleep_for(std::chrono::seconds(1000));
+
+    server.unBind();
+    server.destroy();
+
+    ctx.release();
+    return 0;
+
 	/*
 	cys::comm::Context ctx;
 	cys::comm::app::UDPServer server(&ctx);
@@ -83,6 +124,7 @@ int main()
 	return 0;
 	*/
 
+	/*
 	cys::comm::Context ctx;
 	cys::comm::app::TCPClient client(&ctx);
 	client.create();
@@ -95,4 +137,5 @@ int main()
 
 	ctx.release();
 	return 0;
+	 */
 }

@@ -9,7 +9,7 @@ add_definitions("-Wall -std=c++17")
 set(Boost_ROOT ${PROJECT_SOURCE_DIR}/boost_1_72_0)
 set(Boost_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/boost_1_72_0)
 set(Boost_LIBRARY_DIR ${PROJECT_SOURCE_DIR}/boost_1_72_0/stage/lib)
-find_package(Boost COMPONENTS filesystem system iostreams REQUIRED)
+find_package(Boost COMPONENTS filesystem system iostreams serialization REQUIRED)
 
 message(STATUS "PThread..")
 find_package(Threads REQUIRED)
@@ -24,7 +24,7 @@ file(GLOB_RECURSE source_list
 	"presentation/*.hpp" "presentation/*.cpp" "presentation/*.h"
 	"transport/*.hpp" "transport/*.cpp" "transport/*.h")
 
-# add_executable(comm ${source_list} "Main.cpp")
-add_library(comm STATIC ${source_list} "UDPClient.cpp" "UDPClient.h" "UDPServer.cpp" "UDPServer.h" "TCPClient.h"
-		"TCPClient.cpp" "TCPServer.cpp" "TCPServer.h" "Ctx.cpp" "Ctx.h")
+add_executable(comm ${source_list} "Main.cpp")
+#add_library(comm STATIC ${source_list} "UDPClient.cpp" "UDPClient.h" "UDPServer.cpp" "UDPServer.h" "TCPClient.h"
+#		"TCPClient.cpp" "TCPServer.cpp" "TCPServer.h" "Ctx.cpp" "Ctx.h")
 target_link_libraries(comm ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
