@@ -87,6 +87,31 @@ namespace wrapper {
 		return m_client->sendToAsync(address, port, data);
 	}
 
+    bool UDPClient::send(const std::vector<char>& data)
+    {
+	    return m_client->send(data);
+    }
+
+    bool UDPClient::sendAsync(const std::vector<char>& data)
+    {
+	    return m_client->sendAsync(data);
+    }
+
+    bool UDPClient::sendToBroadCast(uint16_t port, const std::vector<char>& data)
+    {
+	    return m_client->sendToBroadCast(port, data);
+    }
+
+    bool UDPClient::sendTo(const std::string& address, uint16_t port, const std::vector<char>& data)
+    {
+	    return m_client->sendTo(address, port, data);
+    }
+
+    bool UDPClient::sendToAsync(const std::string& address, uint16_t port, const std::vector<char>& data)
+    {
+	    return m_client->sendToAsync(address, port, data);
+    }
+
 	bool UDPClient::receive(std::string& data) {
 		return m_client->receive(data);
 	}

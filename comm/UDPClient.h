@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 #include "Ctx.h"
 
 namespace cys {
@@ -73,6 +74,11 @@ namespace wrapper {
 		bool sendToBroadCast(uint16_t port, const std::string& data);
 		bool sendTo(const std::string& address, uint16_t port, const std::string& data);
 		bool sendToAsync(const std::string& address, uint16_t port, const std::string& data);
+        bool send(const std::vector<char>& data);
+        bool sendAsync(const std::vector<char>& data);
+        bool sendToBroadCast(uint16_t port, const std::vector<char>& data);
+        bool sendTo(const std::string& address, uint16_t port, const std::vector<char>& data);
+        bool sendToAsync(const std::string& address, uint16_t port, const std::vector<char>& data);
 		bool receive(std::string& data);
 		EndPoint receiveFrom(uint16_t port, std::string& data);
 		bool receiveAsync();		
